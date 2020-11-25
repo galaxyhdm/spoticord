@@ -1,7 +1,7 @@
 version: '3'
 services:
   bot:
-    image: "biospheere/spoticord"
+    image: "test"
     restart: always
     env_file: .env
     depends_on:
@@ -13,6 +13,8 @@ services:
     env_file: .env
     volumes:
     - mysql-volume:/var/lib/mysql
+    ports:
+    - 127.0.0.1:3306:3306
 
 
 volumes:

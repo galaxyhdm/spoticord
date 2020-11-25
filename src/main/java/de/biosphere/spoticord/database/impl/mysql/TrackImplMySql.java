@@ -2,6 +2,7 @@ package de.biosphere.spoticord.database.impl.mysql;
 
 import com.zaxxer.hikari.HikariDataSource;
 import de.biosphere.spoticord.database.dao.TrackDao;
+import de.biosphere.spoticord.database.model.SpotifyListen;
 import de.biosphere.spoticord.database.model.SpotifyTrack;
 
 import java.sql.Connection;
@@ -92,17 +93,31 @@ public class TrackImplMySql implements TrackDao {
                 preparedStatement.setLong(6, spotifyTrack.duration());
                 preparedStatement.execute();
             }
+        } catch (final SQLException ex) {
+            ex.printStackTrace();
+        }
+    }
 
-            try (final PreparedStatement preparedStatement2 = connection.prepareStatement(
-                    "INSERT INTO `Listens` (`Id`, `Timestamp`, `TrackId`, `GuildId`, `UserId`) VALUES (NULL, CURRENT_TIMESTAMP, ?, ?, ?)")) {
-                preparedStatement2.setString(1, spotifyTrack.id());
-                preparedStatement2.setString(2, guildId);
-                preparedStatement2.setString(3, userId);
-                preparedStatement2.execute();
+    @Override
+    public int insertListening(final SpotifyTrack spotifyTrack, final String userId, final String guildId) {
+        try (final Connection connection = hikariDataSource.getConnection()) {
+            try (final PreparedStatement preparedStatement = connection.prepareStatement(
+                    "INSERT INTO `Listens` (`Id`, `Timestamp`, `TrackId`, `GuildId`, `UserId`, `ListeningTime`) VALUES (NULL, CURRENT_TIMESTAMP, ?, ?, ?, ?);")) {
+                preparedStatement.setString(1, spotifyTrack.id());
+                preparedStatement.setString(2, guildId);
+                preparedStatement.setString(3, userId);
+                preparedStatement.setLong(4, spotifyTrack.duration());
+                preparedStatement.execute();
+            }
+            try (final PreparedStatement preparedStatement = connection.prepareStatement(
+                    "SELECT LAST_INSERT_ID() AS last_id")) {
+                final ResultSet resultSet = preparedStatement.executeQuery();
+                if(resultSet.next()) return resultSet.getInt("last_id");
             }
         } catch (final SQLException ex) {
             ex.printStackTrace();
         }
+        return -1;
     }
 
     @Override
@@ -169,6 +184,57 @@ public class TrackImplMySql implements TrackDao {
             ex.printStackTrace();
         }
         return tracks;
+    }
+
+    @Override
+    public SpotifyListen getSpotifyListen(final int listenId) {
+        try (final Connection connection = hikariDataSource.getConnection()) {
+            try (final PreparedStatement preparedStatement = connection.prepareStatement("SELECT * FROM Listens WHERE Id=?;")) {
+               preparedStatement.setInt(1, listenId);
+                final ResultSet resultSet = preparedStatement.executeQuery();
+                if (resultSet.next())
+                    return getListenFromResultSet(resultSet);
+            }
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+        }
+        return null;
+    }
+
+    @Override
+    public SpotifyListen getLastListen(final String guildId, final String userId) {
+        try (final Connection connection = hikariDataSource.getConnection()) {
+            try (final PreparedStatement preparedStatement = connection.prepareStatement(
+                    "SELECT * FROM Listens WHERE GuildId=? AND UserId=? ORDER BY Timestamp DESC LIMIT 1;")) {
+                preparedStatement.setString(1, guildId);
+                preparedStatement.setString(2, userId);
+                final ResultSet resultSet = preparedStatement.executeQuery();
+                if(resultSet.next())
+                    return getListenFromResultSet(resultSet);
+            }
+        }catch (SQLException ex) {
+            ex.printStackTrace();
+        }
+        return null;
+    }
+
+    @Override
+    public void updateListeningTime(final int listenId, final long listeningTime) {
+        try (final Connection connection = hikariDataSource.getConnection()) {
+            try (final PreparedStatement preparedStatement = connection
+                    .prepareStatement("UPDATE Listens SET ListeningTime=? WHERE Id=?;")) {
+                preparedStatement.setLong(1, listeningTime);
+                preparedStatement.setInt(2, listenId);
+                preparedStatement.execute();
+            }
+        }catch (SQLException ex) {
+            ex.printStackTrace();
+        }
+    }
+
+    private SpotifyListen getListenFromResultSet(final ResultSet resultSet) throws SQLException {
+        return new SpotifyListen(resultSet.getInt("Id"), resultSet.getDate("Timestamp"), resultSet.getString("GuildId"),
+                resultSet.getString("TrackId"), resultSet.getString("UserId"), resultSet.getLong("ListeningTime"));
     }
 
 }

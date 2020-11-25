@@ -1,5 +1,6 @@
 package de.biosphere.spoticord.database.dao;
 
+import de.biosphere.spoticord.database.model.SpotifyListen;
 import de.biosphere.spoticord.database.model.SpotifyTrack;
 
 import java.util.List;
@@ -42,6 +43,16 @@ public interface TrackDao {
     void insertTrack(final SpotifyTrack spotifyTrack, final String userId, final String guildId);
 
     /**
+     * Insert a new listen entry into the database
+     *
+     * @param spotifyTrack the {@link SpotifyTrack}
+     * @param userId       the Snowflake id of the user
+     * @param guildId      the Snowflake id of the guild that the user is part of
+     * @return the inserted id
+     */
+    int insertListening(final SpotifyTrack spotifyTrack, final String userId, final String guildId);
+
+    /**
      * 
      * @param guildId  the Snowflake id of the guild
      * @param userId   the Snowflake id of the user
@@ -55,5 +66,20 @@ public interface TrackDao {
     List<SpotifyTrack> getLastTracks(final String guildId);
 
     List<SpotifyTrack> getLastTracks(final String guildId, final String userId);
+
+    /**
+     * @param listenId the unique identifier for a listen entry in the database
+     * @return the selected {@link SpotifyListen} entry
+     */
+    SpotifyListen getSpotifyListen(final int listenId);
+
+    /**
+     * @param guildId the Snowflake id of the guild
+     * @param userId  the Snowflake id of the user
+     * @return the last listen spotify track from the user
+     */
+    SpotifyListen getLastListen(final String guildId, final String userId);
+
+    void updateListeningTime(final int listenId, final long listeningTime);
 
 }
